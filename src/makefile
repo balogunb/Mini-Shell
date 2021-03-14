@@ -4,7 +4,7 @@ CFLAGS= -g -Wall -I.
 
 
 main: shellex.c csapp.c
-	gcc -Wall -o shellex -pthread shellex.c csapp.c
+	gcc -Wall -g -o shellex -pthread shellex.c csapp.c
 
 run: fork_exec_pt2 fork_exec giveme
 

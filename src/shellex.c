@@ -1,17 +1,32 @@
 /* $begin shellmain */
 #include "csapp.h"
 #define MAXARGS 128
+#define MAXJOBS 20
 
 /* Function prototypes */
 void eval(char *cmdline);
 int parseline(char *buf, char **argv);
 int builtin_command(char **argv);
-int handle_env_substitute(char ** argv);
+int handle_env_substitute(char **argv);
+int addtojobslist(pid_t __pid, char *argv, int status);
+
+/* struct for jobs */
+struct Job
+{
+    int process_id;
+    char argument[MAXLINE];
+    int status; /* 1 represents running while 0 represents stopped */
+} job;
+
+/* Shell Variables */
+struct Job jobs[MAXJOBS];
+int *jobscount;
 
 int main()
 {
     char cmdline[MAXLINE]; /* Command line */
-
+    jobscount = malloc(sizeof(int));
+    *jobscount = 0;
     while (1)
     {
         /* Read */
@@ -46,8 +61,11 @@ void eval(char *cmdline)
         if ((pid = Fork()) == 0)
         { /* Child runs user job */
 
+            //fprintf(stderr, "before adding to joblist\n");
+
+            //fprintf(stderr, "adding to joblist completed\n");
             handle_env_substitute(argv); /*substitute environment variables */
-            setpgid(getpid(),0); /*set job process group ID to the child's PID */
+            setpgid(getpid(), 0);        /*set job process group ID to the child's PID */
 
             if (execvp(argv[0], argv) < 0)
             {
@@ -55,6 +73,9 @@ void eval(char *cmdline)
                 exit(0);
             }
         }
+
+        addtojobslist(pid, cmdline, bg); /*Handles adding new job to jobs list */
+        //fprintf(stderr, "Jobs: %d\n", *jobscount);
 
         /* Parent waits for foreground job to terminate */
         if (!bg)
@@ -86,21 +107,55 @@ int builtin_command(char **argv)
             return 1;
         }
 
-        char * value = strtok(NULL, "=");
+        char *value = strtok(NULL, "=");
 
-        if(value == NULL){/* Handles removing environment variable for variableName */
-            if(unsetenv(variableName) == -1){
+        if (value == NULL)
+        { /* Handles removing environment variable for variableName */
+            if (unsetenv(variableName) == -1)
+            {
                 fprintf(stderr, "Error unsetting environment variable");
             }
             return 1;
         }
 
         //handle setting enviroment variable
-        if(setenv(variableName,value,1) != 0){
+        if (setenv(variableName, value, 1) != 0)
+        {
             fprintf(stderr, "Insufficient space to allocate new environment");
         }
 
         return 1;
+    }
+
+    if (!strcmp(argv[0], "jobs"))
+    { /* Handles the jobs built in command */
+        //fprintf(stderr, "Counting Jobs\n");
+        //fprintf(stderr, "Handler Jobs: %d\n", *jobscount);
+        for (int i = 0; i < *jobscount; i++)
+        {
+            int status;
+            jobs[i].status = waitpid(jobs[i].process_id,&status,WNOHANG) == 0;/* if waitpid is 0 then child is still running */
+            printf("[%d] ", i + 1);
+            printf("%d  ", jobs[i].process_id);
+            if (jobs[i].status)
+            {
+                printf("Running   ");
+            }
+            else
+            {
+                printf("Stopped   ");
+            }
+
+            printf("%s ", jobs[i].argument);
+            printf("\n");
+        }
+
+        return 1;
+    }
+
+    if (!strcmp(argv[0], "bg")){
+            if(argv[1] == NULL)
+
     }
 
     return 0; /* Not a builtin command */
@@ -142,21 +197,37 @@ int parseline(char *buf, char **argv)
 }
 /* $end parseline */
 
-
-
-int handle_env_substitute(char ** argv){
+int handle_env_substitute(char **argv)
+{
     int i = 0;
 
-    while (argv[i] != NULL){
+    while (argv[i] != NULL)
+    {
+        if (strchr(argv[i], '$') == argv[i])
+        { /*checks if the environemnt needs to be substituted */
 
-        if(strchr(argv[i],'$') == argv[i] ){ /*checks if the environemnt needs to be substituted */
-
-            if(getenv(argv[i] + 1) != NULL){
-                argv[i] =  getenv(argv[i] + 1); /* Replaces value from env */
+            if (getenv(argv[i] + 1) != NULL)
+            {
+                argv[i] = getenv(argv[i] + 1); /* Replaces value from env */
             }
         }
         i++;
     }
-
     return 0;
+}
+
+int addtojobslist(pid_t __pid, char *argv, int status)
+{
+    if (*jobscount == MAXJOBS)
+    {
+        fprintf(stderr, "Error: Job list is full");
+        return 1;
+    }
+
+    jobs[*jobscount].process_id = __pid;
+    jobs[*jobscount].status = status;
+    strcpy(jobs[*jobscount].argument, argv);
+    int prev = *jobscount;
+    *jobscount = prev + 1;
+    return 1;
 }
