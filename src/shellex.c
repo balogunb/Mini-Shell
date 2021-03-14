@@ -154,7 +154,9 @@ int builtin_command(char **argv)
     }
 
     if (!strcmp(argv[0], "bg")){
-            if(argv[1] == NULL)
+            if(argv[1] == NULL){
+                
+            }
 
     }
 
