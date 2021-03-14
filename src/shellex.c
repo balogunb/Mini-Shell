@@ -47,6 +47,8 @@ void eval(char *cmdline)
         { /* Child runs user job */
 
             handle_env_substitute(argv); /*substitute environment variables */
+            setpgid(getpid(),0); /*set job process group ID to the child's PID */
+
             if (execvp(argv[0], argv) < 0)
             {
                 printf("%s: Command not found.\n", argv[0]);
