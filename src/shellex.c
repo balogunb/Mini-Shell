@@ -2,13 +2,14 @@
 #include "csapp.h"
 #define MAXARGS 128
 #define MAXJOBS 20
-
+#define MAXPROC 1000
 /* Function prototypes */
 void eval(char *cmdline);
 int parseline(char *buf, char **argv);
 int builtin_command(char **argv);
 int handle_env_substitute(char **argv);
 int addtojobslist(pid_t __pid, char *argv);
+int addproctolist(pid_t __pid,int status,clock_t startT,long minFault, long maxFault, char *argv);
 void sigtstpHandler(int sig);
 void sigchldHandler(int sig);
 void sigintHandler(int sig);
@@ -34,6 +35,7 @@ struct ProcessStat
 
 /* Shell Variables */
 struct Job jobs[MAXJOBS];
+struct ProcessStat stats[MAXPROC];
 int *jobscount;
 sigset_t tstpmask, prevMask;
 volatile sig_atomic_t parent_proc_id;
