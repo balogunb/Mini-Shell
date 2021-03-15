@@ -251,7 +251,7 @@ int builtin_command(char **argv)
             }
         }
 
-        kill(foreground_proc_id, SIGCONT); /** restart child process **/
+        kill(id_, SIGCONT); /** restart child process **/
         return 1;
     }
 
@@ -285,7 +285,11 @@ int builtin_command(char **argv)
             }
         }
 
-        kill(foreground_proc_id, SIGCONT); /** restart child process **/
+        int status;
+        kill(id_, SIGCONT); /** restart child process **/
+        if(waitpid(id_, &status,WUNTRACED) < 0){
+            unix_error("waitfg: waitpid error");
+        }
         return 1;
     }
 
