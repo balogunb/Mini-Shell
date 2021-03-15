@@ -8,3 +8,4 @@ Features
 4. Added functionality to see jobs state
 5. Added functionality to suspend foreground process
 6. Added functionality to restart suspended process/process group using bg
+7. Added functionality to reap all children  shell
