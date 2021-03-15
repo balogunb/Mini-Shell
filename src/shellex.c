@@ -11,6 +11,7 @@ int handle_env_substitute(char **argv);
 int addtojobslist(pid_t __pid, char *argv);
 void sigtstpHandler(int sig);
 void sigchldHandler(int sig);
+void sigintHandler(int sig);
 
 /* struct for jobs */
 struct Job
@@ -54,6 +55,23 @@ void sigtstpHandler(int sig)
 
 void sigchldHandler(int sig)
 {
+    int saved_errno = errno;
+
+    while (waitpid((pid_t)(-1), 0, WNOHANG) > 0)
+    {
+    }
+    errno = saved_errno;
+}
+
+void sigintHandler(int sig)
+{
+    int saved_errno = errno;
+
+    while (waitpid((pid_t)(-1), 0, WNOHANG) > 0)
+    {
+    }
+    errno = saved_errno;
+    kill(parent_proc_id, SIGKILL);
 }
 
 int main()
@@ -75,6 +93,24 @@ int main()
         fprintf(stderr, "Error Catching SIGTSTP in child");
         //exit(0);
     }
+
+    if (signal(SIGINT, sigintHandler) == SIG_ERR) /* Handles SIGINT for Parent  */
+    {
+        fprintf(stderr, "Error Catching SIGINT");
+        //exit(0);
+    }
+
+    struct sigaction sa;
+    sa.sa_handler = &sigchldHandler;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = SA_RESTART | SA_NOCLDSTOP;
+    if (sigaction(SIGCHLD, &sa, 0) == -1)
+    {
+        fprintf(stderr, "Error Catching SIGCHLD in child");
+        perror(0);
+        exit(1);
+    }
+
 
     while (1)
     {
@@ -187,7 +223,9 @@ int builtin_command(char **argv)
             int status;
             int jobstate;
             jobstate = waitpid(jobs[i].process_id, &status, WNOHANG); /*returns process id of child if status changed */
-            if (jobstate == -1 || WIFEXITED(status))
+
+            if (jobstate == -1)
+                //if (jobstate == -1 || WIFEXITED(status))
                 continue; /* Do not add if process already terminated */
 
             if (WIFSTOPPED(status))
@@ -251,7 +289,7 @@ int builtin_command(char **argv)
             }
         }
 
-        kill(foreground_proc_id, SIGCONT); /** restart child process **/
+        kill(id_, SIGCONT); /** restart child process **/
         return 1;
     }
 
@@ -285,7 +323,13 @@ int builtin_command(char **argv)
             }
         }
 
-        kill(foreground_proc_id, SIGCONT); /** restart child process **/
+        int status;
+        foreground_proc_id = id_;
+        kill(id_, SIGCONT); /** restart child process **/
+        if (waitpid(id_, &status, WUNTRACED) < 0)
+        {
+            unix_error("waitfg: waitpid error");
+        }
         return 1;
     }
 
