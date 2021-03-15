@@ -20,6 +20,27 @@ Obstacles:
 
 Instructions were difficult to read. It was hard to differentiate between what was required and was just being provided as general info. Information of a single part was scattered in different places, e.g info about signals can be found in general infor, Group 3 and Important Notes...
 
+Summary of each Group:
 
+Group 1
+Custom name shell to lsh by printing lsh> in a while(true), before shell receives arguments or print anything else.
+Studied environment variables
+Used get_env to inherit the environment of the shell in order to inherit commands such as ls
+Used set_env to allow user to change environment variables and inherit commands that they desire from chosen environment
+Used unset in order to remove environment variables when user types variableName=
+ 
+Group 2
+Parsed user in put in order to look for ‘$’ and changed environment, if need be, in that of $PATH in order to inherit that environment and run given command
+Passed current environment to child processes after fork() so child environment also inherits shell commands
+ 
+Group 3
+Read  Computer Systems: A Programmer's Perspective
+Created and struct (list) of jobs in order to track jobs 
+Test
+Implemented job identification of for user to call jobs and get status of that job
+Check if last char is ‘&’ and run process in background if so
+Test
+Create method to printf the list of jobs, their id, status and initiating command
+Handle signals in order to continue stoppped processes using SIGCONT, and making them back or foreground, depending on user’s choice
 
 
