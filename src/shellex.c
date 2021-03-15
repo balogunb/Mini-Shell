@@ -8,7 +8,9 @@ void eval(char *cmdline);
 int parseline(char *buf, char **argv);
 int builtin_command(char **argv);
 int handle_env_substitute(char **argv);
-int addtojobslist(pid_t __pid, char *argv, int status);
+int addtojobslist(pid_t __pid, char *argv);
+void sigtstpHandler(int sig);
+void sigchldHandler(int sig);
 
 /* struct for jobs */
 struct Job
@@ -21,12 +23,59 @@ struct Job
 /* Shell Variables */
 struct Job jobs[MAXJOBS];
 int *jobscount;
+sigset_t tstpmask, prevMask;
+volatile sig_atomic_t parent_proc_id;
+volatile sig_atomic_t foreground_proc_id;
+
+/* Signal Handlers */
+void sigtstpHandler(int sig)
+{
+    //fprintf(stderr, "Parent Proccess ID: %d\n", parent_proc_id);
+    //fprintf(stderr, "Foreground Proccess ID: %d\n", foreground_proc_id);
+    //fprintf(stderr, "Foreground process is still running?: %d\n", kill(foreground_proc_id,0) == 0);
+
+    kill(parent_proc_id, SIGCONT); /** continue running parent **/
+
+    if (kill(foreground_proc_id, 0) == 0)
+    { /* If child process exists */
+
+        for (int i = 0; i < MAXJOBS; i++)
+        {
+            if (jobs[i].process_id == foreground_proc_id)
+            {
+                jobs[i].status = 2; //Status 2 represents suspended process
+                break;
+            }
+        }
+
+        kill(foreground_proc_id, SIGTSTP); /** suspend child process **/
+    }
+}
+
+void sigchldHandler(int sig)
+{
+}
 
 int main()
 {
     char cmdline[MAXLINE]; /* Command line */
     jobscount = malloc(sizeof(int));
     *jobscount = 0;
+    parent_proc_id = getpid();
+    //fprintf(stderr, "Parent ID: %d\n", parent_proc_id);
+
+    if ((sigemptyset(&tstpmask) == -1) || (sigaddset(&tstpmask, SIGTSTP) == -1)) /* add SIGTSTP to mask */
+    {
+        perror("Failed to initialize the signal mask");
+        return 1;
+    }
+
+    if (signal(SIGTSTP, sigtstpHandler) == SIG_ERR) /* Handles SIGTSTP for Parent  */
+    {
+        fprintf(stderr, "Error Catching SIGTSTP in child");
+        //exit(0);
+    }
+
     while (1)
     {
         /* Read */
@@ -61,31 +110,30 @@ void eval(char *cmdline)
         if ((pid = Fork()) == 0)
         { /* Child runs user job */
 
-            //fprintf(stderr, "before adding to joblist\n");
-
-            //fprintf(stderr, "adding to joblist completed\n");
-            handle_env_substitute(argv); /*substitute environment variables */
             setpgid(getpid(), 0);        /*set job process group ID to the child's PID */
-
+            handle_env_substitute(argv); /*substitute environment variables */
             if (execvp(argv[0], argv) < 0)
             {
                 printf("%s: Command not found.\n", argv[0]);
                 exit(0);
             }
         }
-
-        addtojobslist(pid, cmdline, bg); /*Handles adding new job to jobs list */
-        //fprintf(stderr, "Jobs: %d\n", *jobscount);
+        addtojobslist(pid, cmdline); /*Handles adding new job to jobs list */
 
         /* Parent waits for foreground job to terminate */
         if (!bg)
         {
+
+            //sigprocmask(SIG_BLOCK, &tstpmask, &prevMask);
+            foreground_proc_id = pid;
+            //sigprocmask(SIG_SETMASK, &prevMask, &tstpmask);
+
             int status;
-            if (waitpid(pid, &status, 0) < 0)
+            if (waitpid(pid, &status, WUNTRACED) < 0)
                 unix_error("waitfg: waitpid error");
         }
         else
-            printf("%d %s", pid, cmdline);
+            fprintf(stderr, "%d %s", pid, cmdline);
     }
     return;
 }
@@ -131,31 +179,114 @@ int builtin_command(char **argv)
     { /* Handles the jobs built in command */
         //fprintf(stderr, "Counting Jobs\n");
         //fprintf(stderr, "Handler Jobs: %d\n", *jobscount);
+
+        int cnt = 0;
         for (int i = 0; i < *jobscount; i++)
         {
+
             int status;
-            jobs[i].status = waitpid(jobs[i].process_id,&status,WNOHANG) == 0;/* if waitpid is 0 then child is still running */
-            printf("[%d] ", i + 1);
-            printf("%d  ", jobs[i].process_id);
-            if (jobs[i].status)
+            int jobstate;
+            jobstate = waitpid(jobs[i].process_id, &status, WNOHANG); /*returns process id of child if status changed */
+            if (jobstate == -1 || WIFEXITED(status))
+                continue; /* Do not add if process already terminated */
+
+            if (WIFSTOPPED(status))
             {
-                printf("Running   ");
-            }
-            else
-            {
+                printf("[%d] ", ++cnt);
+                printf("%d  ", jobs[i].process_id);
+                jobs[i].status = 0;
                 printf("Stopped   ");
+                printf("%s", jobs[i].argument);
             }
-
-            printf("%s ", jobs[i].argument);
-            printf("\n");
+            else if (jobstate == 0) /** if process is still running or suspended */
+            {
+                if (jobs[i].status == 2) //
+                {
+                    printf("[%d] ", ++cnt);
+                    printf("%d  ", jobs[i].process_id);
+                    jobs[i].status = 2;
+                    printf("Stopped   ");
+                    printf("%s", jobs[i].argument);
+                }
+                else //If the process is running
+                {
+                    printf("[%d] ", ++cnt);
+                    printf("%d  ", jobs[i].process_id);
+                    jobs[i].status = 1;
+                    printf("Running   ");
+                    printf("%s", jobs[i].argument);
+                }
+            }
         }
-
         return 1;
     }
 
-    if (!strcmp(argv[0], "bg")){
-            if(argv[1] == NULL)
+    if (!strcmp(argv[0], "bg"))
+    {
+        if (argv[1] == NULL)
+        {
+            fprintf(stderr, "Error: Input processID or JID for process to run in background");
+            return 1;
+        }
 
+        char *id = malloc(50 * sizeof(char));
+        strcpy(id, argv[1]);
+
+        int id_;
+        if (*id == '%')
+        { /*if it is a job id */
+            id_ = atoi(id);
+        }
+        else
+        {
+            id_ = atoi(id);
+        }
+
+        for (int i = 0; i < MAXJOBS; i++)
+        {
+            if (jobs[i].process_id == id_)
+            {
+                jobs[i].status = 1; //Status 1 represents running process
+                break;
+            }
+        }
+
+        kill(foreground_proc_id, SIGCONT); /** restart child process **/
+        return 1;
+    }
+
+    if (!strcmp(argv[0], "fg"))
+    {
+        if (argv[1] == NULL)
+        {
+            fprintf(stderr, "Error: Input processID or JID for process to run in background");
+            return 1;
+        }
+
+        char *id = malloc(50 * sizeof(char));
+        strcpy(id, argv[1]);
+
+        int id_;
+        if (*id == '%')
+        { /*if it is a job id */
+            id_ = atoi(id);
+        }
+        else
+        {
+            id_ = atoi(id);
+        }
+
+        for (int i = 0; i < MAXJOBS; i++)
+        {
+            if (jobs[i].process_id == id_)
+            {
+                jobs[i].status = 1; //Status 1 represents running process
+                break;
+            }
+        }
+
+        kill(foreground_proc_id, SIGCONT); /** restart child process **/
+        return 1;
     }
 
     return 0; /* Not a builtin command */
@@ -216,7 +347,7 @@ int handle_env_substitute(char **argv)
     return 0;
 }
 
-int addtojobslist(pid_t __pid, char *argv, int status)
+int addtojobslist(pid_t __pid, char *argv)
 {
     if (*jobscount == MAXJOBS)
     {
@@ -224,8 +355,14 @@ int addtojobslist(pid_t __pid, char *argv, int status)
         return 1;
     }
 
+    int status;
+    //int state =
+    waitpid(__pid, &status, WNOHANG);
+    if (WIFEXITED(status))
+        return 1; /* Do not add if process already terminated */
+
     jobs[*jobscount].process_id = __pid;
-    jobs[*jobscount].status = status;
+    jobs[*jobscount].status = 1;
     strcpy(jobs[*jobscount].argument, argv);
     int prev = *jobscount;
     *jobscount = prev + 1;
