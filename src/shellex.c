@@ -187,7 +187,9 @@ int builtin_command(char **argv)
             int status;
             int jobstate;
             jobstate = waitpid(jobs[i].process_id, &status, WNOHANG); /*returns process id of child if status changed */
-            if (jobstate == -1 || WIFEXITED(status))
+
+            if (jobstate == -1)
+            //if (jobstate == -1 || WIFEXITED(status))
                 continue; /* Do not add if process already terminated */
 
             if (WIFSTOPPED(status))
@@ -286,6 +288,7 @@ int builtin_command(char **argv)
         }
 
         int status;
+        foreground_proc_id = id_;
         kill(id_, SIGCONT); /** restart child process **/
         if(waitpid(id_, &status,WUNTRACED) < 0){
             unix_error("waitfg: waitpid error");
