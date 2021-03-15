@@ -55,8 +55,3 @@ NAME
     ^Z - CONTROL+Z
 
  SYNOPSIS
-
-    
-
-DESCRIPTION
-     Causes the kernel to send a SIGINT (SIGTSTP) signal to your shell, which then forwards it to every process in the foreground process group.
