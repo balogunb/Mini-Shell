@@ -21,6 +21,17 @@ struct Job
     int status; /* 1 represents running while 0 represents stopped */
 } job;
 
+struct ProcessStat
+{
+    pid_t process_id;
+    int status;
+    clock_t startT;
+    clock_t endT;
+    long minFault;
+    long maxFault;
+    char argument[MAXLINE];
+} processstat;
+
 /* Shell Variables */
 struct Job jobs[MAXJOBS];
 int *jobscount;
@@ -330,6 +341,23 @@ int builtin_command(char **argv)
         {
             unix_error("waitfg: waitpid error");
         }
+        return 1;
+    }
+
+
+    if(!strcmp(argv[0], "jsum")){
+        fprintf(stdout,"PID    Status     Elapsed Time    Min Faults    Maj Faults Command\n");
+
+
+
+
+
+
+
+
+
+
+
         return 1;
     }
 
