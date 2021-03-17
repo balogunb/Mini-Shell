@@ -284,19 +284,19 @@ int builtin_command(char **argv)
         strcpy(id, argv[1]);
 
         int id_;
-        if (*id == '%')
+        if (id[0] == '%')
         { /*if it is a job id */
-            id_ = atoi(id);
+            id_ = atoi(id+1);
             int j_cnt = 0;
 
             for (int i = 0; i < MAXJOBS; i++)
             {
-                if (kill(jobs[i].process_id, 0) == 0) /* if its a job. used to count JID */
+                if (kill(jobs[i].process_id, 0) == 0 && jobs[i].process_id != 0) /* if its a job. used to count JID */
                 {
                     j_cnt++;
                 }
 
-                if (id_ = j_cnt) /* if its a job. used to count JID */
+                if (id_ == j_cnt) /* if its a job. used to count JID */
                 {
                     jobs[i].status = 1; //Status 1 represents running process
                     break;
@@ -306,6 +306,7 @@ int builtin_command(char **argv)
         else /* handles process ID */
         {
             id_ = atoi(id);
+            fprintf(stderr, "The id is %c PID\n", id[0]);
 
             for (int i = 0; i < MAXJOBS; i++)
             {
@@ -321,7 +322,7 @@ int builtin_command(char **argv)
         return 1;
     }
 
-    if (!strcmp(argv[0], "fg"))
+    if (!strcmp(argv[0], "fg")) /* handles returning back to fore ground process */
     {
         if (argv[1] == NULL)
         {
@@ -333,9 +334,9 @@ int builtin_command(char **argv)
         strcpy(id, argv[1]);
 
         int id_;
-        if (*id == '%')
+        if (id[0] == '%')
         { /*if it is a job id */
-            id_ = atoi(id);
+            id_ = atoi(id+1);
 
             int j_cnt = 0;
 
@@ -346,7 +347,7 @@ int builtin_command(char **argv)
                     j_cnt++;
                 }
 
-                if (id_ = j_cnt) /* if its a job. used to count JID */
+                if (id_ == j_cnt) /* if its a job. used to count JID */
                 {
                     jobs[i].status = 1; //Status 1 represents running process
                     break;
