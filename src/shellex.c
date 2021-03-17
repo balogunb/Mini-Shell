@@ -9,7 +9,7 @@ int parseline(char *buf, char **argv);
 int builtin_command(char **argv);
 int handle_env_substitute(char **argv);
 int addtojobslist(pid_t __pid, char *argv);
-int addproctolist(pid_t __pid,int status,clock_t startT,long minFault, long maxFault, char *argv);
+int addproctolist(pid_t __pid, int status, clock_t startT, long minFault, long maxFault, char *argv);
 void sigtstpHandler(int sig);
 void sigchldHandler(int sig);
 void sigintHandler(int sig);
@@ -124,11 +124,11 @@ int main()
         exit(1);
     }
 
-
     while (1)
     {
         /* Read */
         printf("lsh> ");
+
         Fgets(cmdline, MAXLINE, stdin);
         if (feof(stdin))
             exit(0);
@@ -287,18 +287,33 @@ int builtin_command(char **argv)
         if (*id == '%')
         { /*if it is a job id */
             id_ = atoi(id);
+            int j_cnt = 0;
+
+            for (int i = 0; i < MAXJOBS; i++)
+            {
+                if (kill(jobs[i].process_id, 0) == 0) /* if its a job. used to count JID */
+                {
+                    j_cnt++;
+                }
+
+                if (id_ = j_cnt) /* if its a job. used to count JID */
+                {
+                    jobs[i].status = 1; //Status 1 represents running process
+                    break;
+                }
+            }
         }
-        else
+        else /* handles process ID */
         {
             id_ = atoi(id);
-        }
 
-        for (int i = 0; i < MAXJOBS; i++)
-        {
-            if (jobs[i].process_id == id_)
+            for (int i = 0; i < MAXJOBS; i++)
             {
-                jobs[i].status = 1; //Status 1 represents running process
-                break;
+                if (jobs[i].process_id == id_)
+                {
+                    jobs[i].status = 1; //Status 1 represents running process
+                    break;
+                }
             }
         }
 
@@ -321,18 +336,33 @@ int builtin_command(char **argv)
         if (*id == '%')
         { /*if it is a job id */
             id_ = atoi(id);
+
+            int j_cnt = 0;
+
+            for (int i = 0; i < MAXJOBS; i++)
+            {
+                if (kill(jobs[i].process_id, 0) == 0) /* if its a job. used to count JID */
+                {
+                    j_cnt++;
+                }
+
+                if (id_ = j_cnt) /* if its a job. used to count JID */
+                {
+                    jobs[i].status = 1; //Status 1 represents running process
+                    break;
+                }
+            }
         }
         else
-        {
+        { /* if process id */
             id_ = atoi(id);
-        }
-
-        for (int i = 0; i < MAXJOBS; i++)
-        {
-            if (jobs[i].process_id == id_)
+            for (int i = 0; i < MAXJOBS; i++)
             {
-                jobs[i].status = 1; //Status 1 represents running process
-                break;
+                if (jobs[i].process_id == id_)
+                {
+                    jobs[i].status = 1; //Status 1 represents running process
+                    break;
+                }
             }
         }
 
@@ -346,19 +376,9 @@ int builtin_command(char **argv)
         return 1;
     }
 
-
-    if(!strcmp(argv[0], "jsum")){
-        fprintf(stdout,"PID    Status     Elapsed Time    Min Faults    Maj Faults Command\n");
-
-
-
-
-
-
-
-
-
-
+    if (!strcmp(argv[0], "jsum"))
+    {
+        fprintf(stdout, "PID    Status     Elapsed Time    Min Faults    Maj Faults Command\n");
 
         return 1;
     }

@@ -42,5 +42,5 @@ Check if last char is ‘&’ and run process in background if so
 Test
 Create method to printf the list of jobs, their id, status and initiating command
 Handle signals in order to continue stoppped processes using SIGCONT, and making them back or foreground, depending on user’s choice
-
+For our implementation of fg and bg we set it to require the process id or jid 
 
