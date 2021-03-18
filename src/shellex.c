@@ -97,19 +97,19 @@ int main()
 
     if ((sigemptyset(&tstpmask) == -1) || (sigaddset(&tstpmask, SIGTSTP) == -1)) /* add SIGTSTP to mask */
     {
-        perror("Failed to initialize the signal mask");
+        perror("Failed to initialize the signal mask\n");
         return 1;
     }
 
     if (signal(SIGTSTP, sigtstpHandler) == SIG_ERR) /* Handles SIGTSTP for Parent  */
     {
-        fprintf(stderr, "Error Catching SIGTSTP in child");
+        fprintf(stderr, "Error Catching SIGTSTP in child\n");
         //exit(0);
     }
 
     if (signal(SIGINT, sigintHandler) == SIG_ERR) /* Handles SIGINT for Parent  */
     {
-        fprintf(stderr, "Error Catching SIGINT");
+        fprintf(stderr, "Error Catching SIGINT\n");
         //exit(0);
     }
 
@@ -210,7 +210,7 @@ int builtin_command(char **argv)
         { /* Handles removing environment variable for variableName */
             if (unsetenv(variableName) == -1)
             {
-                fprintf(stderr, "Error unsetting environment variable");
+                fprintf(stderr, "Error unsetting environment variable\n");
             }
             return 1;
         }
@@ -218,7 +218,7 @@ int builtin_command(char **argv)
         //handle setting enviroment variable
         if (setenv(variableName, value, 1) != 0)
         {
-            fprintf(stderr, "Insufficient space to allocate new environment");
+            fprintf(stderr, "Insufficient space to allocate new environment\n");
         }
 
         return 1;
@@ -276,7 +276,7 @@ int builtin_command(char **argv)
     {
         if (argv[1] == NULL)
         {
-            fprintf(stderr, "Error: Input processID or JID for process to run in background");
+            fprintf(stderr, "Error: Input processID or JID for process to run in background\n");
             return 1;
         }
 
@@ -326,7 +326,7 @@ int builtin_command(char **argv)
     {
         if (argv[1] == NULL)
         {
-            fprintf(stderr, "Error: Input processID or JID for process to run in background");
+            fprintf(stderr, "Error: Input processID or JID for process to run in background\n");
             return 1;
         }
 
@@ -349,6 +349,7 @@ int builtin_command(char **argv)
 
                 if (id_ == j_cnt) /* if its a job. used to count JID */
                 {
+                    id_ = jobs[i].process_id;
                     jobs[i].status = 1; //Status 1 represents running process
                     break;
                 }
@@ -446,7 +447,7 @@ int addtojobslist(pid_t __pid, char *argv)
 {
     if (*jobscount == MAXJOBS)
     {
-        fprintf(stderr, "Error: Job list is full");
+        fprintf(stderr, "Error: Job list is full\n");
         return 1;
     }
 
